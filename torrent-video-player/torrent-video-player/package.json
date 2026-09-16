@@ -1,0 +1,29 @@
+{
+  "name": "torrent-video-player",
+  "version": "1.0.0",
+  "description": "Sequential Torrent Video Streaming Server & Web UI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "webtorrent",
+    "video-player",
+    "streaming",
+    "torrent",
+    "express",
+    "sequential-download"
+  ],
+  "author": "TorrentStreamer",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "ffmpeg-static": "^5.3.0",
+    "multer": "^1.4.5-lts.1",
+    "parse-torrent": "^11.0.24",
+    "torrent-search-api": "^2.1.4",
+    "webtorrent": "^2.4.0"
+  }
+}

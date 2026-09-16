@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Putlocker - Free Movies &amp; TV Shows Online</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- WebTorrent Browser Build (client-side torrent engine) -->
+  <script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header / Cinema Navbar -->
+    <header class="navbar">
+      <div class="navbar-left">
+        <div class="logo" id="logoHome" title="Putlocker Home">
+          <i data-lucide="play" class="logo-icon"></i>
+          <span>PUT<strong>LOCKER</strong></span>
+        </div>
+
+        <!-- Main Navigation Links -->
+        <nav class="nav-tabs" role="tablist">
+          <button id="navTabHome" class="nav-tab active" role="tab" aria-selected="true">
+            <span>Home</span>
+          </button>
+          <button id="navTabMovies" class="nav-tab" role="tab" aria-selected="false">
+            <span>Movies</span>
+          </button>
+          <button id="navTabTV" class="nav-tab" role="tab" aria-selected="false">
+            <span>TV Shows</span>
+          </button>
+          <button id="navTabIMDB" class="nav-tab" role="tab" aria-selected="false">
+            <span>Top IMDB</span>
+          </button>
+          <button id="navTabPlayer" class="nav-tab" role="tab" aria-selected="false">
+            <span>Now Playing</span>
+            <span id="playerActiveBadge" class="nav-tab-badge live hidden">Live</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Center Global Universal Search Bar -->
+      <div class="navbar-center">
+        <form id="globalSearchForm" class="global-search-bar">
+          <i data-lucide="search" class="global-search-icon"></i>
+          <input type="text" id="globalSearchInput" placeholder="Search any movie, series, or torrent to stream instantly..." autocomplete="off">
+          <button type="button" id="btnGlobalSearchClear" class="btn-clear hidden" title="Clear search">
+            <i data-lucide="x"></i>
+          </button>
+        </form>
+      </div>
+
+      <!-- Right Header Actions -->
+      <div class="header-actions">
+        <!-- Floating Now Playing Pill -->
+        <button id="btnNowPlayingBar" class="btn-now-playing hidden" title="Jump to active video stream">
+          <span class="pulse-dot"></span>
+          <i data-lucide="tv"></i>
+          <span id="nowPlayingText">Streaming</span>
+        </button>
+
+        <button id="btnShortcuts" class="btn-secondary btn-sm" title="Keyboard Shortcuts">
+          <i data-lucide="keyboard"></i> <span>Shortcuts</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- ============================================================ -->
+      <!-- VIEW 1: MOVIE STREAMING HOME & DISCOVER CATALOG (Active)    -->
+      <!-- ============================================================ -->
+      <div id="discoverView" class="view-pane active">
+        <!-- Featured Hero Billboard Showcase -->
+        <section class="hero-billboard" id="heroBillboard">
+          <div class="hero-backdrop" id="heroBackdrop"></div>
+          <div class="hero-gradient-overlay"></div>
+          <div class="hero-content">
+            <div class="hero-badges">
+              <span class="badge-featured"><i data-lucide="flame"></i> Featured Blockbuster</span>
+              <span class="badge-quality">4K Ultra HD</span>
+              <span class="hero-rating-chip" id="heroRatingChip"><i data-lucide="star"></i> <span id="heroRating">8.6</span></span>
+            </div>
+            <h1 class="hero-title" id="heroTitle">Dune: Part Two</h1>
+            <div class="hero-meta" id="heroMeta">
+              <span id="heroYear">2024</span>
+              <span class="meta-dot">&bull;</span>
+              <span id="heroRuntime">2h 46m</span>
+              <span class="meta-dot">&bull;</span>
+              <span id="heroGenres">Action, Adventure, Sci-Fi</span>
+            </div>
+            <p class="hero-synopsis" id="heroPlot">Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family, facing a choice between love and the fate of the universe.</p>
+            <div class="hero-action-buttons">
+              <button type="button" class="btn-hero-play" id="btnHeroStream">
+                <i data-lucide="play"></i> <span>Stream Movie in HD</span>
+              </button>
+              <button type="button" class="btn-hero-trailer" id="btnHeroTrailer">
+                <i data-lucide="clapperboard"></i> <span>Watch Trailer</span>
+              </button>
+              <button type="button" class="btn-hero-info" id="btnHeroDetails">
+                <i data-lucide="info"></i> <span>Details &amp; Streams</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Category & Genre Bar -->
+        <section class="streaming-catalog-section">
+          <div class="catalog-header-bar">
+            <div class="catalog-filters-left">
+              <div class="category-pills" id="discoverTypePills">
+                <button type="button" class="cat-pill active" data-type="all"><i data-lucide="sparkles"></i> All</button>
+                <button type="button" class="cat-pill" data-type="movie"><i data-lucide="film"></i> Movies</button>
+                <button type="button" class="cat-pill" data-type="series"><i data-lucide="tv"></i> TV Series</button>
+              </div>
+            </div>
+            <div class="genre-pills" id="genrePills">
+              <button type="button" class="genre-pill active" data-genre="all">Trending</button>
+              <button type="button" class="genre-pill" data-genre="Action">Action</button>
+              <button type="button" class="genre-pill" data-genre="Sci-Fi">Sci-Fi</button>
+              <button type="button" class="genre-pill" data-genre="Drama">Drama</button>
+              <button type="button" class="genre-pill" data-genre="Crime">Crime</button>
+              <button type="button" class="genre-pill" data-genre="Thriller">Thriller</button>
+              <button type="button" class="genre-pill" data-genre="Animation">Animation</button>
+            </div>
+          </div>
+
+          <!-- Hidden legacy elements for programmatic compatibility -->
+          <form id="discoverForm" class="hidden">
+            <input type="text" id="discoverInput">
+            <button type="button" id="btnDiscoverClear"></button>
+            <button type="submit" id="btnDiscoverSubmit"></button>
+          </form>
+
+          <!-- Loading state -->
+          <div id="discoverLoading" class="search-loading hidden">
+            <div class="search-spinner-row">
+              <div class="spinner"></div>
+              <span>Fetching IMDb descriptions, posters &amp; high-speed swarms...</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Curated Content Shelves (Netflix / Stremio rows) -->
+          <div id="streamingShelves" class="streaming-shelves">
+            <!-- Shelf 1: Trending Now -->
+            <div class="shelf-container" id="shelfTrendingContainer">
+              <div class="shelf-title-row">
+                <h2><i data-lucide="flame" class="shelf-icon-hot"></i> Trending Right Now</h2>
+                <span class="shelf-sub">Top watched movies and television this week</span>
+              </div>
+              <div class="shelf-grid" id="shelfTrendingGrid"></div>
+            </div>
+
+            <!-- Shelf 2: Blockbuster Movies -->
+            <div class="shelf-container" id="shelfMoviesContainer">
+              <div class="shelf-title-row">
+                <h2><i data-lucide="film" class="shelf-icon-movie"></i> Blockbuster Movies</h2>
+                <span class="shelf-sub">High-definition films with instant swarm streaming</span>
+              </div>
+              <div class="shelf-grid" id="shelfMoviesGrid"></div>
+            </div>
+
+            <!-- Shelf 3: Binge-Worthy TV Series -->
+            <div class="shelf-container" id="shelfShowsContainer">
+              <div class="shelf-title-row">
+                <h2><i data-lucide="tv" class="shelf-icon-tv"></i> Binge-Worthy TV Series</h2>
+                <span class="shelf-sub">Full seasons with episode-by-episode sequential playback</span>
+              </div>
+              <div class="shelf-grid" id="shelfShowsGrid"></div>
+            </div>
+          </div>
+
+          <!-- Filter / Search Results Grid (Visible when searching or filtering) -->
+          <div id="discoverGrid" class="discover-grid hidden"></div>
+        </section>
+      </div> <!-- /#discoverView -->
+
+      <!-- ============================================================ -->
+      <!-- VIEW 2: HIGH PERFORMANCE CINEMA VIDEO PLAYER                -->
+      <!-- ============================================================ -->
+      <div id="playerView" class="view-pane hidden">
+        <!-- Top Bar inside Player View: Return to Catalog & Title Preview -->
+        <div class="player-top-header">
+          <button type="button" id="btnBackToCatalog" class="btn-secondary btn-sm" title="Browse catalog while stream runs">
+            <i data-lucide="arrow-left"></i> <span>Back to Catalog</span>
+          </button>
+          <div class="player-now-watching">
+            <span class="watching-pill"><span class="pulse-dot"></span> NOW STREAMING</span>
+            <span id="playerNowTitle" class="watching-title">Movie Title</span>
+          </div>
+          <button type="button" id="btnExpandDock" class="btn-primary btn-sm dock-expand-btn hidden" title="Expand player">
+            <i data-lucide="maximize-2"></i> <span>Expand</span>
+          </button>
+          <button type="button" id="btnPlayerToggleMagnet" class="btn-secondary btn-sm" title="Custom Magnet / Torrent File">
+            <i data-lucide="link"></i> <span>Custom Magnet</span>
+          </button>
+        </div>
+
+        <!-- Status Bar / Loader -->
+        <div id="loadingState" class="card loading-card hidden">
+          <div class="spinner"></div>
+          <div class="loading-info">
+            <h3 id="loadingTitle">Streaming via BitTorrent Swarm...</h3>
+            <p id="loadingMessage">Connecting to torrent swarm and prioritizing sequential pieces...</p>
+          </div>
+        </div>
+
+        <!-- Video Player & Dashboard Area -->
+        <div id="playerSection" class="player-grid">
+          <!-- Main Player Column -->
+          <div class="player-main">
+            <!-- YouTube Player Container -->
+            <div class="yt-player-container" id="ytPlayerContainer" tabindex="0">
+              <video id="videoPlayer" playsinline preload="auto" crossorigin="anonymous" poster="https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=1200&q=80">
+                Your browser does not support HTML5 video streaming.
+              </video>
+
+              <div id="playerOverlay" class="player-overlay">
+                <div class="spinner"></div>
+                <h3 id="overlayTitle">Ready to stream</h3>
+                <p id="overlayMessage">Pick a movie on Home, or paste a magnet with + Magnet / File.</p>
+                <button type="button" id="btnOverlayMagnet" class="btn-primary btn-sm">Open magnet / file</button>
+              </div>
+
+              <!-- Floating Autoplay Unmute & Audio Fix Banner -->
+              <div class="yt-unmute-banner hidden" id="ytUnmuteBanner">
+                <i data-lucide="volume-x"></i>
+                <span>Audio is muted by browser. Click here to unmute &amp; boost sound</span>
+              </div>
+
+              <!-- YouTube Center Big Play/Pause Animation -->
+              <div class="yt-bezel" id="ytBezel">
+                <div class="yt-bezel-icon" id="ytBezelIcon">
+                  <svg class="bezel-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                  <svg class="bezel-pause hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </div>
+              </div>
+
+              <!-- YouTube Double Click Seek Ripples -->
+              <div class="yt-seek-ripple left" id="ytSeekLeft">
+                <div class="yt-seek-ripple-content">
+                  <svg viewBox="0 0 24 24" class="yt-seek-icon"><path fill="currentColor" d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>
+                  <span>10 seconds</span>
+                </div>
+              </div>
+              <div class="yt-seek-ripple right" id="ytSeekRight">
+                <div class="yt-seek-ripple-content">
+                  <svg viewBox="0 0 24 24" class="yt-seek-icon"><path fill="currentColor" d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
+                  <span>10 seconds</span>
+                </div>
+              </div>
+
+              <!-- YouTube Circular Buffering Spinner -->
+              <div class="yt-spinner hidden" id="ytSpinner">
+                <svg class="yt-spinner-svg" viewBox="0 0 50 50">
+                  <circle class="yt-spinner-path" cx="25" cy="25" r="20" fill="none" stroke-width="4"></circle>
+                </svg>
+              </div>
+
+              <!-- YouTube On-Screen Volume HUD -->
+              <div class="yt-volume-hud hidden" id="ytVolumeHud">
+                <div class="yt-hud-bar">
+                  <div class="yt-hud-fill" id="ytVolumeHudFill"></div>
+                </div>
+                <span id="ytVolumeHudText">100%</span>
+              </div>
+
+              <!-- YouTube Context Menu -->
+              <div class="yt-context-menu hidden" id="ytContextMenu">
+                <div class="yt-context-item" id="ctxLoop">
+                  <span class="ctx-check" id="ctxLoopCheck">&#10003;</span>
+                  <span>Loop</span>
+                </div>
+                <div class="yt-context-item" id="ctxCopyUrl">Copy video URL</div>
+                <div class="yt-context-item" id="ctxCopyUrlTime">Copy video URL at current time</div>
+                <div class="yt-context-item" id="ctxCopyDebug">Copy debug info</div>
+                <div class="yt-context-sep"></div>
+                <div class="yt-context-item" id="ctxAudioFix" style="display: none !important;">⚡ Fix Silent Audio (AAC)</div>
+                <div class="yt-context-item" id="ctxNerds">Stats for nerds</div>
+              </div>
+
+              <!-- YouTube Stats for Nerds Panel -->
+              <div class="yt-nerd-stats hidden" id="ytNerdStats">
+                <div class="nerd-header">
+                  <span>Stats for nerds</span>
+                  <button class="nerd-close" id="btnNerdClose">&times;</button>
+                </div>
+                <div class="nerd-row"><span>Audio Engine / Codec:</span> <strong id="nerdAudio">AAC Stereo / Passthrough</strong></div>
+                <div class="nerd-row"><span>Volume Booster Gain:</span> <strong id="nerdVolumeBoost">100% (Normal)</strong></div>
+                <div class="nerd-row"><span>Resolution / Viewport:</span> <strong id="nerdRes">0x0 / 0x0</strong></div>
+                <div class="nerd-row"><span>Volume / Normalized:</span> <strong id="nerdVol">100% / 100%</strong></div>
+                <div class="nerd-row"><span>Buffer Health:</span> <strong id="nerdBuffer">0.00 s</strong></div>
+                <div class="nerd-row"><span>Dropped Frames:</span> <strong id="nerdDropped">0 / 0</strong></div>
+                <div class="nerd-row"><span>Swarm Speed / Peers:</span> <strong id="nerdSwarm">0 KB/s / 0 peers</strong></div>
+              </div>
+
+              <!-- YouTube Settings Menu Overlay -->
+              <div class="yt-settings-menu hidden" id="ytSettingsMenu">
+                <div class="yt-settings-panel" id="ytSettingsMain">
+                  <div class="yt-menu-item" id="btnMenuSpeed">
+                    <span class="menu-label">Playback speed</span>
+                    <span class="menu-value" id="currentSpeedLabel">Normal &rsaquo;</span>
+                  </div>
+                  <div class="yt-menu-item" id="btnMenuAudioFix" style="display: none !important;">
+                    <span class="menu-label">⚡ Audio Transcode Fix</span>
+                    <span class="menu-value" id="audioFixStatusLabel">Off &rsaquo;</span>
+                  </div>
+                  <div class="yt-menu-item" id="btnMenuLoop">
+                    <span class="menu-label">Loop</span>
+                    <span class="menu-value" id="loopLabel">Off</span>
+                  </div>
+                  <div class="yt-menu-item" id="btnMenuNerds">
+                    <span class="menu-label">Stats for nerds</span>
+                    <span class="menu-value" id="nerdLabel">Off</span>
+                  </div>
+                </div>
+                <!-- Speed Submenu -->
+                <div class="yt-settings-panel hidden" id="ytSettingsSpeed">
+                  <div class="yt-submenu-header" id="btnSpeedBack">
+                    <svg viewBox="0 0 24 24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                    <span>Playback speed</span>
+                  </div>
+                  <div class="yt-speed-option" data-speed="0.25">0.25</div>
+                  <div class="yt-speed-option" data-speed="0.5">0.5</div>
+                  <div class="yt-speed-option" data-speed="0.75">0.75</div>
+                  <div class="yt-speed-option active" data-speed="1">Normal</div>
+                  <div class="yt-speed-option" data-speed="1.25">1.25</div>
+                  <div class="yt-speed-option" data-speed="1.5">1.5</div>
+                  <div class="yt-speed-option" data-speed="1.75">1.75</div>
+                  <div class="yt-speed-option" data-speed="2">2</div>
+                </div>
+              </div>
+
+              <!-- YouTube Gradient Overlays -->
+              <div class="yt-gradient-top"></div>
+              <div class="yt-gradient-bottom"></div>
+
+              <!-- YouTube Controls Bar -->
+              <div class="yt-controls" id="ytControls">
+                <!-- YouTube Scrubber Bar -->
+                <div class="yt-progress-bar-container" id="ytProgressBarContainer">
+                  <div class="yt-time-tooltip" id="ytTimeTooltip">0:00</div>
+                  <div class="yt-progress-bar" id="ytProgressBar">
+                    <div class="yt-progress-list">
+                      <div class="yt-progress-load" id="ytProgressLoad"></div>
+                      <div class="yt-progress-hover" id="ytProgressHover"></div>
+                      <div class="yt-progress-play" id="ytProgressPlay"></div>
+                    </div>
+                    <div class="yt-scrubber-thumb" id="ytScrubberThumb"></div>
+                  </div>
+                </div>
+
+                <!-- Controls Row -->
+                <div class="yt-controls-bottom">
+                  <!-- Left Controls -->
+                  <div class="yt-controls-left">
+                    <!-- Play / Pause Button -->
+                    <button class="yt-btn" id="btnPlayPause" title="Play (k)" aria-label="Play">
+                      <svg class="yt-icon-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                      <svg class="yt-icon-pause hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </button>
+
+                    <!-- Next File Button -->
+                    <button class="yt-btn" id="btnNextFile" title="Next file (Shift+N)" aria-label="Next file">
+                      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                    </button>
+
+                    <!-- Volume Controls -->
+                    <div class="yt-volume-control" id="ytVolumeControl">
+                      <button class="yt-btn" id="btnMute" title="Mute (m)" aria-label="Mute">
+                        <svg class="yt-vol-high" viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                        <svg class="yt-vol-low hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                        <svg class="yt-vol-muted hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                      </button>
+                      <div class="yt-volume-slider-wrapper">
+                        <input type="range" class="yt-volume-slider" id="ytVolumeSlider" min="0" max="1" step="0.05" value="1">
+                      </div>
+                    </div>
+
+                    <!-- Audio Booster Button & Dropdown Menu -->
+                    <div class="yt-boost-control" style="display: none !important;">
+                      <button type="button" class="yt-btn yt-boost-btn" id="btnVolumeBoost" title="Volume Booster (Boost sound up to 300%)">
+                        <span class="boost-tag">BOOST</span>
+                        <span id="boostLevelText" class="boost-val">100%</span>
+                      </button>
+                      <div class="boost-menu hidden" id="boostMenu">
+                        <div class="boost-menu-title">Audio Volume Amplifier</div>
+                        <button type="button" class="boost-option active" data-gain="1.0">Normal (100%)</button>
+                        <button type="button" class="boost-option" data-gain="1.5">Boost 150%</button>
+                        <button type="button" class="boost-option" data-gain="2.0">Boost 200% (Loud)</button>
+                        <button type="button" class="boost-option" data-gain="3.0">Max Boost 300% (Dialogue)</button>
+                      </div>
+                    </div>
+
+                    <!-- Audio Fix Quick Button (Transcode AC3/DTS to AAC) -->
+                    <button type="button" class="yt-btn yt-audio-fix-btn" id="btnAudioFix" style="display: none !important;" title="Fix silent or unsupported audio (AC3, EAC3, DTS) with real-time AAC transcoder">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                      <span class="audio-fix-text" id="btnAudioFixText">Fix Audio</span>
+                    </button>
+
+                    <!-- Time Display -->
+                    <div class="yt-time-display">
+                      <span id="currentTime">0:00</span>
+                      <span class="yt-time-separator">/</span>
+                      <span id="durationTime">0:00</span>
+                    </div>
+                  </div>
+
+                  <!-- Right Controls -->
+                  <div class="yt-controls-right">
+                    <!-- Autoplay Switch -->
+                    <button class="yt-btn yt-autoplay-btn" id="btnAutoplay" title="Autoplay is on">
+                      <div class="yt-switch-track active" id="autoplaySwitchTrack">
+                        <div class="yt-switch-knob">
+                          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                        </div>
+                      </div>
+                    </button>
+
+                    <!-- Subtitles (CC) Button -->
+                    <button class="yt-btn" id="btnSubtitles" title="Subtitles/closed captions (c)">
+                      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/></svg>
+                    </button>
+
+                    <!-- Settings Gear Button -->
+                    <button class="yt-btn" id="btnSettings" title="Settings">
+                      <svg class="yt-icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    </button>
+
+                    <!-- Miniplayer (Picture-in-Picture) Button -->
+                    <button class="yt-btn" id="btnMiniplayer" title="Miniplayer (i)">
+                      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg>
+                    </button>
+
+                    <!-- Theater Mode Button -->
+                    <button class="yt-btn" id="btnTheater" title="Theater mode (t)">
+                      <svg class="yt-icon-theater" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6H5c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H5V8h14v8z"/></svg>
+                    </button>
+
+                    <!-- Fullscreen Button -->
+                    <button class="yt-btn" id="btnFullscreen" title="Fullscreen (f)">
+                      <svg class="yt-icon-fs-enter" viewBox="0 0 24 24"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                      <svg class="yt-icon-fs-exit hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- YouTube Video Header & Channel Row -->
+            <div class="yt-video-info-section">
+              <h1 id="torrentNameDisplay" class="yt-video-title">Movie Video Title</h1>
+
+              <div class="yt-channel-row">
+                <!-- Channel Info -->
+                <div class="yt-channel-left">
+                  <div class="yt-channel-avatar">
+                    <span>SF</span>
+                  </div>
+                  <div class="yt-channel-text">
+                    <div class="yt-channel-name">
+                      <span>Private Media Server</span>
+                      <svg class="yt-verified-badge" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    </div>
+                    <div class="yt-channel-subs">
+                      <span>Private Stream Active</span>
+                    </div>
+                  </div>
+                  <div class="file-selector-box yt-file-picker">
+                    <label for="fileSelect"><i data-lucide="video"></i> File:</label>
+                    <select id="fileSelect"></select>
+                  </div>
+                </div>
+
+                <!-- Action Buttons Right -->
+                <div class="yt-channel-right">
+                  <button class="yt-action-pill" id="btnShare">
+                    <svg viewBox="0 0 24 24"><path fill="currentColor" d="M15 5.63L20.66 12 15 18.37V14h-1c-3.96 0-7.14 1-9.75 3.09 1.84-4.07 5.11-6.4 9.89-7.1l.86-.13V5.63M14 3v6C6.22 10.13 3.11 15.33 2 21c2.78-3.97 6.44-6 12-6v6l8-9-8-9z"/></svg>
+                    <span>Share</span>
+                  </button>
+                  <button class="yt-action-pill" id="btnStopDownload">
+                    <i data-lucide="square"></i>
+                    <span>Stop Stream</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- YouTube Description Box / Stats HUD -->
+              <div class="yt-description-box" id="ytDescriptionBox">
+                <div class="yt-desc-header">
+                  <span id="descViewCount" class="desc-meta-item"><i data-lucide="download"></i> 0 KB/s</span>
+                  <span id="descDate" class="desc-meta-item">Server Stream Active</span>
+                </div>
+                <div class="yt-desc-text">
+                  <div class="stream-stats-dashboard">
+                    <div class="hud-item">
+                      <span class="hud-label">Download Speed:</span>
+                      <span id="hudSpeed" class="hud-val">0 KB/s</span>
+                    </div>
+                    <div class="hud-item">
+                      <span class="hud-label">Downloaded:</span>
+                      <span id="hudDownloaded" class="hud-val">0 MB</span>
+                    </div>
+                  </div>
+                  <!-- Sequential Piece Map -->
+                  <div class="sequential-visualizer-wrap">
+                    <div class="vis-header">
+                      <span>Sequential Piece Map (Prioritized First &amp; Last Blocks)</span>
+                      <span id="visPiecesCount">0 / 0 pieces</span>
+                    </div>
+                    <div class="sequential-track" id="pieceMapTrack">
+                      <div class="piece-indicator playhead" id="piecePlayhead"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Playlist / Media Files Queue -->
+          <aside class="player-sidebar">
+            <div class="card yt-queue-card">
+              <div class="yt-queue-header">
+                <h3><svg viewBox="0 0 24 24" class="yt-queue-icon"><path fill="currentColor" d="M19 15v-3h-2v3h-3v2h3v3h2v-3h3v-2h-3zM4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg> Media Playlist</h3>
+                <span id="fileCountBadge" class="yt-queue-badge">0 files</span>
+              </div>
+              <ul id="fileList" class="yt-queue-list">
+                <!-- Dynamically populated files -->
+              </ul>
+            </div>
+          </aside>
+        </div> <!-- /#playerSection -->
+      </div> <!-- /#playerView -->
+
+      <!-- ============================================================ -->
+      <!-- VIEW 3: DEDICATED MULTI-SCRAPER TORRENT SEARCH ENGINE       -->
+      <!-- ============================================================ -->
+      <div id="searchView" class="view-pane hidden">
+        <section class="card search-hero-card">
+          <div class="search-header-flex">
+            <div class="search-title-wrap">
+              <div class="search-title-row">
+                <h2><i data-lucide="server"></i> Private Media Library</h2>
+                <span class="badge-live-pulse"><span class="pulse-dot"></span> Server Online</span>
+              </div>
+              <p class="subtitle">Stream movies, TV shows, and media instantly from your high-speed private media server.</p>
+            </div>
+          </div>
+
+          <!-- Main Search Form -->
+          <form id="searchForm" class="search-form">
+            <div class="search-input-wrap">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="searchInput" placeholder="Search for movies, TV series, anime, documentaries, software, music..." autocomplete="off" required>
+              <button type="button" id="btnSearchClear" class="btn-clear hidden" title="Clear query">
+                <i data-lucide="x"></i>
+              </button>
+              <button type="submit" id="btnSearchSubmit" class="btn-primary search-submit-btn">
+                <i data-lucide="search"></i> <span>Search</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- Filters Bar -->
+          <div class="search-filters-bar">
+            <!-- Category Pills -->
+            <div class="category-pills" id="categoryPills">
+              <button type="button" class="cat-pill active" data-category="All"><i data-lucide="layers"></i> All</button>
+              <button type="button" class="cat-pill" data-category="Movies"><i data-lucide="film"></i> Movies</button>
+              <button type="button" class="cat-pill" data-category="TV"><i data-lucide="tv"></i> TV Series</button>
+              <button type="button" class="cat-pill" data-category="Anime"><i data-lucide="sparkles"></i> Anime</button>
+              <button type="button" class="cat-pill" data-category="Music"><i data-lucide="music"></i> Music</button>
+              <button type="button" class="cat-pill" data-category="Applications"><i data-lucide="box"></i> Software</button>
+            </div>
+
+            <!-- Sort & Limit Controls -->
+            <div class="search-sort-controls">
+              <div class="control-group">
+                <label for="searchSortSelect"><i data-lucide="arrow-down-up"></i> Sort:</label>
+                <select id="searchSortSelect" class="custom-select">
+                  <option value="seeds-desc">Most Seeders</option>
+                  <option value="peers-desc">Most Leechers</option>
+                  <option value="size-desc">Largest Size</option>
+                  <option value="size-asc">Smallest Size</option>
+                  <option value="title-asc">Title (A-Z)</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="searchLimitSelect"><i data-lucide="list"></i> Limit:</label>
+                <select id="searchLimitSelect" class="custom-select">
+                  <option value="20" selected>20</option>
+                  <option value="30">30</option>
+                  <option value="50">50</option>
+                  <option value="10">10</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Trending Suggestions -->
+          <div class="trending-tags">
+            <span class="trending-label"><i data-lucide="flame"></i> Quick:</span>
+            <button type="button" class="tag-btn" data-query="Big Buck Bunny">Big Buck Bunny</button>
+            <button type="button" class="tag-btn" data-query="Sintel">Sintel</button>
+            <button type="button" class="tag-btn" data-query="Tears of Steel">Tears of Steel</button>
+            <button type="button" class="tag-btn" data-query="Dune 2">Dune 2</button>
+            <button type="button" class="tag-btn" data-query="Oppenheimer">Oppenheimer</button>
+            <button type="button" class="tag-btn" data-query="Matrix">The Matrix</button>
+          </div>
+        </section>
+
+        <!-- Search Status / Stats Header -->
+        <div id="searchStatsBar" class="search-stats-bar hidden">
+          <div class="stats-left">
+            <span id="searchResultCount" class="result-count">0 torrents found</span>
+            <span id="searchQueryBadge" class="query-badge"></span>
+          </div>
+          <div class="stats-right">
+            <span class="stats-tip"><i data-lucide="zap"></i> Click <strong>Stream Now</strong> to stream in browser instantly</span>
+          </div>
+        </div>
+
+        <!-- Search Loading Skeleton -->
+        <div id="searchLoading" class="search-loading hidden">
+          <div class="search-spinner-row">
+            <div class="spinner"></div>
+            <span>Querying active torrent scrapers in real-time...</span>
+          </div>
+          <div class="skeleton-grid">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+          </div>
+        </div>
+
+        <!-- Search Empty State -->
+        <div id="searchEmptyState" class="search-empty-state">
+          <div class="empty-icon-wrap">
+            <i data-lucide="compass" class="empty-icon"></i>
+          </div>
+          <h3>Discover &amp; Stream Any Torrent</h3>
+          <p>Search millions of movies, shows, and videos across top torrent indices and play them sequentially right in your browser.</p>
+          <div class="empty-action-row">
+            <button type="button" class="btn-sample btn-empty-demo" data-demo="Matrix">
+              <i data-lucide="play"></i> Try searching "The Matrix"
+            </button>
+            <button type="button" class="btn-sample btn-empty-demo" data-demo="Dune">
+              <i data-lucide="play"></i> Try searching "Dune"
+            </button>
+          </div>
+        </div>
+
+        <!-- Search Error State -->
+        <div id="searchErrorState" class="card search-error-card hidden">
+          <i data-lucide="alert-circle" class="error-icon"></i>
+          <h3 id="searchErrorTitle">Search Failed</h3>
+          <p id="searchErrorMessage">Could not fetch results from scrapers. Please check your network or try again.</p>
+          <button type="button" id="btnSearchRetry" class="btn-secondary btn-sm"><i data-lucide="refresh-cw"></i> Retry</button>
+        </div>
+
+        <!-- Search Results Grid -->
+        <div id="searchResultsGrid" class="search-results-grid hidden"></div>
+      </div> <!-- /#searchView -->
+
+      <!-- ============================================================ -->
+      <!-- VIEW 4: FULL MEDIA DETAIL VIEW (Movies & TV Series)          -->
+      <!-- ============================================================ -->
+      <div id="detailView" class="view-pane media-detail-page hidden">
+        <!-- Sticky Sub-Navigation & Breadcrumbs Bar -->
+        <div class="detail-nav-bar">
+          <div class="detail-nav-left">
+            <button type="button" id="btnBackToDiscover" class="btn-detail-back" title="Return to catalog">
+              <i data-lucide="arrow-left"></i> <span>Back to Catalog</span>
+            </button>
+            <div class="detail-breadcrumbs">
+              <span class="crumb-link" id="crumbDiscover">Discover</span>
+              <span class="crumb-sep">/</span>
+              <span class="crumb-type" id="crumbType">Movie</span>
+              <span class="crumb-sep">/</span>
+              <span class="crumb-title" id="crumbTitle">Title</span>
+            </div>
+          </div>
+          <div class="detail-nav-actions">
+            <button type="button" id="btnDetailNavTrailer" class="btn-secondary btn-sm">
+              <i data-lucide="film"></i> <span>Trailer</span>
+            </button>
+            <button type="button" id="btnDetailNavStream" class="btn-primary btn-sm">
+              <i data-lucide="play"></i> <span id="btnDetailNavStreamText">Stream Now</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Cinematic Hero Section -->
+        <div class="detail-hero-showcase">
+          <div class="detail-backdrop" id="detailBackdrop"></div>
+          <div class="detail-hero-content">
+            <!-- Left Poster Column -->
+            <div class="detail-poster-col">
+              <div class="detail-poster-frame">
+                <img id="mediaDetailPoster" src="" alt="" class="detail-poster" loading="lazy">
+                <div class="detail-poster-glow"></div>
+              </div>
+              <div class="detail-rating-card">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="#ffb800"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <div class="rating-info">
+                  <div class="rating-score">
+                    <span id="mediaDetailRating">--</span>
+                    <small>/10</small>
+                  </div>
+                  <span class="rating-source">IMDb Rating</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Media Information Column -->
+            <div class="detail-info-col">
+              <div class="detail-meta-row">
+                <span id="mediaDetailTypeBadge" class="media-type-badge movie">Movie</span>
+                <span id="mediaDetailYear" class="detail-meta-chip"></span>
+                <span id="mediaDetailRuntime" class="detail-meta-chip"></span>
+                <span id="mediaDetailStatus" class="detail-meta-chip status-chip hidden"></span>
+              </div>
+
+              <h1 id="mediaDetailTitle" class="detail-main-title">Title</h1>
+              <div id="mediaDetailGenre" class="detail-genre-tags"></div>
+
+              <div class="detail-synopsis-box">
+                <h3>Overview</h3>
+                <p id="mediaDetailPlot" class="detail-synopsis-text"></p>
+              </div>
+
+              <div class="detail-credits-grid">
+                <div class="credit-item">
+                  <span class="credit-label" id="mediaDetailDirectorLabel">Director:</span>
+                  <span class="credit-value" id="mediaDetailDirector">—</span>
+                </div>
+                <div class="credit-item">
+                  <span class="credit-label">Starring:</span>
+                  <span class="credit-value" id="mediaDetailActors">—</span>
+                </div>
+              </div>
+
+              <!-- Main Hero Action Row -->
+              <div class="detail-hero-actions">
+                <button type="button" id="btnDetailStream" class="btn-hero-primary">
+                  <i data-lucide="play-circle"></i>
+                  <span id="btnDetailStreamLabel">Stream Movie in HD</span>
+                </button>
+                <button type="button" id="btnDetailTrailer" class="btn-hero-secondary">
+                  <i data-lucide="clapperboard"></i>
+                  <span>Watch Trailer</span>
+                </button>
+                <button type="button" id="btnDetailSearchTorrent" class="btn-hero-ghost">
+                  <i data-lucide="search"></i>
+                  <span>Browse Torrents</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inline Embedded Trailer Player Box -->
+        <div id="detailTrailerSection" class="detail-trailer-section hidden">
+          <div class="trailer-box-header">
+            <h3><i data-lucide="film"></i> Official HD Trailer</h3>
+            <button type="button" id="btnCloseInlineTrailer" class="btn-close-inline-trailer">
+              <i data-lucide="x"></i> <span>Close Trailer</span>
+            </button>
+          </div>
+          <div class="trailer-responsive-wrapper" id="detailTrailerEmbed"></div>
+        </div>
+
+        <!-- AVAILABLE TORRENT STREAMS & SWARM RELEASES -->
+        <div id="detailStreamsSection" class="detail-streams-section" style="display: none !important;">
+          <div class="streams-container-card">
+            <div class="streams-header-bar">
+              <div class="streams-title-group">
+                <i data-lucide="sparkles"></i>
+                <h2>Available Torrent Streams &amp; Quality</h2>
+                <span class="badge-live-pulse"><span class="pulse-dot"></span> 5 Scrapers</span>
+              </div>
+              <span class="streams-hint">Auto-streams highest-seeded release or select your preferred release:</span>
+            </div>
+
+            <!-- Streams Loading Spinner -->
+            <div id="streamsLoading" class="streams-loading hidden">
+              <div class="spinner-sm"></div>
+              <span>Searching YTS, 1337x, ThePirateBay, EZTV &amp; Limetorrents...</span>
+            </div>
+
+            <!-- Streams List -->
+            <div id="streamsList" class="streams-grid"></div>
+          </div>
+        </div>
+
+        <!-- TV SHOW SECTION: Complete Seasons & Episodes -->
+        <div id="mediaDetailTVPanel" class="media-detail-tv-panel hidden">
+          <div class="seasons-container-card">
+            <div class="seasons-header-bar">
+              <div class="seasons-title-group">
+                <i data-lucide="tv"></i>
+                <h2>Seasons &amp; Episodes</h2>
+                <span class="seasons-total-badge" id="seasonsSummaryBadge">5 Seasons</span>
+              </div>
+              <!-- Horizontal Season Selection Tabs -->
+              <div class="seasons-tabs-wrapper">
+                <div class="seasons-tabs" id="seasonsTabBar"><!-- Season tabs inserted dynamically --></div>
+              </div>
+            </div>
+
+            <!-- Current Season Info Bar -->
+            <div class="season-subheader" id="seasonInfoBar">
+              <h3 id="currentSeasonHeading">Season 1</h3>
+              <span id="currentSeasonEpCount" class="season-ep-count">Episodes</span>
+            </div>
+
+            <!-- Episodes Loading Spinner -->
+            <div id="episodesLoading" class="episodes-loading hidden">
+              <div class="spinner"></div>
+              <span>Fetching official season &amp; episode details...</span>
+            </div>
+
+            <!-- Episodes Grid/List -->
+            <div id="episodesList" class="episodes-grid"><!-- Episodes inserted dynamically --></div>
+          </div>
+        </div>
+
+        <!-- MOVIE SECTION: Instant Stream & BitTorrent Swarm Info -->
+        <div id="mediaDetailMoviePanel" class="media-detail-movie-panel" style="display: none !important;">
+          <div class="movie-stream-banner">
+            <div class="movie-stream-details">
+              <div class="stream-icon-badge"><i data-lucide="zap"></i></div>
+              <div class="stream-info-text">
+                <h3>Direct High-Speed Swarm Streaming</h3>
+                <p>Sequential piece prioritization starts playback immediately without waiting for full download.</p>
+              </div>
+            </div>
+            <button type="button" id="btnMovieDirectStream" class="btn-primary btn-lg">
+              <i data-lucide="play"></i> Stream Movie Now
+            </button>
+          </div>
+        </div>
+      </div> <!-- /#detailView -->
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>StreamForge Cinema &bull; Sequential BitTorrent Streaming &bull; Real-Time AAC Audio Engine &bull; IMDb Catalog &bull; 5 Torrent Scrapers</p>
+    </footer>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: DIRECT MAGNET / .TORRENT FILE UPLOADER                -->
+  <!-- ============================================================ -->
+  <div id="magnetModal" class="modal hidden">
+    <div class="modal-content card magnet-modal-content">
+      <div class="modal-header">
+        <div class="modal-title-row">
+          <i data-lucide="link"></i>
+          <h3>Load Custom Magnet or .Torrent File</h3>
+        </div>
+        <button id="btnCloseMagnetModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="subtitle">Paste any magnet URI or upload a <code>.torrent</code> file to stream directly in the browser.</p>
+        
+        <form id="torrentForm" class="torrent-form">
+          <div class="input-group">
+            <i data-lucide="magnet" class="input-icon"></i>
+            <input type="text" id="magnetInput" placeholder="magnet:?xt=urn:btih:..." required autocomplete="off">
+            <button type="submit" id="btnStream" class="btn-primary">
+              <i data-lucide="play"></i> Stream Now
+            </button>
+          </div>
+        </form>
+
+        <div class="or-divider"><span>OR</span></div>
+
+        <div class="file-upload-row">
+          <label for="torrentFileInput" class="file-dropzone" id="dropzone">
+            <i data-lucide="upload-cloud"></i>
+            <span>Drop <code>.torrent</code> file here or <strong>browse</strong></span>
+            <input type="file" id="torrentFileInput" accept=".torrent">
+          </label>
+        </div>
+
+        <!-- Quick Demo Links -->
+        <div class="sample-torrents">
+          <span>Quick Demos:</span>
+          <button class="btn-sample" data-magnet="magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.openwebtorrent.com&tr=wss%3A%2F%2Ftracker.webtorrent.dev&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F">
+            🎬 Sintel (Open Film)
+          </button>
+          <button class="btn-sample" data-magnet="magnet:?xt=urn:btih:dd8255edd2b91176dd36255474558a7d45617252&dn=Big+Buck+Bunny&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.openwebtorrent.com&tr=wss%3A%2F%2Ftracker.webtorrent.dev">
+            🐰 Big Buck Bunny
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YouTube Trailer Player Modal -->
+  <div id="trailerModal" class="modal trailer-modal hidden">
+    <div class="modal-content trailer-modal-content">
+      <div class="trailer-header">
+        <div class="trailer-title-row">
+          <i data-lucide="film" class="yt-brand-icon"></i>
+          <h3 id="trailerModalTitle">Official Trailer</h3>
+        </div>
+        <button id="btnCloseTrailer" class="btn-close">&times;</button>
+      </div>
+      <div class="trailer-iframe-wrap">
+        <iframe id="trailerIframe" src="" title="Movie Trailer" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shortcuts Modal -->
+  <div id="shortcutsModal" class="modal hidden">
+    <div class="modal-content card">
+      <div class="modal-header">
+        <h3><i data-lucide="keyboard"></i> Keyboard Shortcuts</h3>
+        <button id="btnCloseModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <ul class="shortcuts-list">
+          <li><kbd>Space</kbd> / <kbd>K</kbd> <span>Play / Pause</span></li>
+          <li><kbd>←</kbd> / <kbd>→</kbd> <span>Seek Backward / Forward 5s</span></li>
+          <li><kbd>↑</kbd> / <kbd>↓</kbd> <span>Increase / Decrease Volume</span></li>
+          <li><kbd>F</kbd> <span>Toggle Fullscreen</span></li>
+          <li><kbd>M</kbd> <span>Mute / Unmute Audio</span></li>
+          <li><kbd>A</kbd> <span>Toggle Audio Transcoding Fix (AAC)</span></li>
+          <li><kbd>B</kbd> <span>Cycle Volume Boost (100% - 300%)</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

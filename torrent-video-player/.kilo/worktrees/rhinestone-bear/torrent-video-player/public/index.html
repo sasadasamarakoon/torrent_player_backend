@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamForge — Torrent Live Video Player</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- WebTorrent Browser Build (client-side torrent engine) -->
+  <script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="navbar">
+      <div class="logo">
+        <i data-lucide="play-circle" class="logo-icon"></i>
+        <span>Stream<strong>Forge</strong></span>
+        <span class="badge">In-Browser Streamer</span>
+      </div>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="nav-tabs" role="tablist">
+        <button id="navTabPlayer" class="nav-tab active" role="tab" aria-selected="true">
+          <i data-lucide="play-circle"></i> <span>Player</span>
+        </button>
+        <button id="navTabSearch" class="nav-tab" role="tab" aria-selected="false">
+          <i data-lucide="search"></i> <span>Search Engine</span>
+          <span class="nav-tab-badge">API</span>
+        </button>
+      </nav>
+
+      <div class="header-actions">
+        <button id="btnShortcuts" class="btn-secondary btn-sm" title="Keyboard Shortcuts">
+          <i data-lucide="keyboard"></i> <span>Shortcuts</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Player View Pane -->
+      <div id="playerView" class="view-pane active">
+        <!-- Input Card -->
+        <section class="card input-card">
+          <h2><i data-lucide="link"></i> Load Torrent Video</h2>
+          <p class="subtitle">Paste a Magnet URI or upload a <code>.torrent</code> file to stream immediately without waiting for full download.</p>
+          
+          <form id="torrentForm" class="torrent-form">
+            <div class="input-group">
+              <i data-lucide="magnet" class="input-icon"></i>
+              <input type="text" id="magnetInput" placeholder="magnet:?xt=urn:btih:..." required autocomplete="off">
+              <button type="submit" id="btnStream" class="btn-primary">
+                <i data-lucide="play"></i> Stream Now
+              </button>
+            </div>
+          </form>
+
+          <div class="or-divider"><span>OR</span></div>
+
+          <div class="file-upload-row">
+            <label for="torrentFileInput" class="file-dropzone" id="dropzone">
+              <i data-lucide="upload-cloud"></i>
+              <span>Drop <code>.torrent</code> file here or <strong>browse</strong></span>
+              <input type="file" id="torrentFileInput" accept=".torrent">
+            </label>
+          </div>
+
+          <!-- Quick Demo Links -->
+          <div class="sample-torrents">
+            <span>Quick Demos:</span>
+            <button class="btn-sample" data-magnet="magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.openwebtorrent.com&tr=wss%3A%2F%2Ftracker.webtorrent.dev&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F">
+              🎬 Sintel (Open Film)
+            </button>
+            <button class="btn-sample" data-magnet="magnet:?xt=urn:btih:dd8255edd2b91176dd36255474558a7d45617252&dn=Big+Buck+Bunny&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.openwebtorrent.com&tr=wss%3A%2F%2Ftracker.webtorrent.dev">
+              🐰 Big Buck Bunny
+            </button>
+          </div>
+
+          <!-- Search Engine Banner / Quick Link -->
+          <div class="search-promo-banner">
+            <div class="promo-text">
+              <i data-lucide="sparkles" class="promo-icon"></i>
+              <span>Don't have a magnet link? Search millions of torrents across top providers.</span>
+            </div>
+            <button type="button" id="btnJumpToSearch" class="btn-search-jump">
+              <i data-lucide="search"></i> Open Search Engine &rarr;
+            </button>
+          </div>
+        </section>
+
+      <!-- Status Bar / Loader -->
+      <div id="loadingState" class="card loading-card hidden">
+        <div class="spinner"></div>
+        <div class="loading-info">
+          <h3 id="loadingTitle">Streaming via Browser WebTorrent...</h3>
+          <p id="loadingMessage">Connecting to torrent swarm and preparing in-browser video stream...</p>
+        </div>
+      </div>
+
+      <!-- Video Player & Dashboard Area -->
+      <div id="playerSection" class="player-grid hidden">
+        <!-- Main Player Column -->
+        <div class="player-main">
+          <!-- YouTube Player Container -->
+          <div class="yt-player-container" id="ytPlayerContainer" tabindex="0">
+            <video id="videoPlayer" playsinline preload="metadata" crossorigin="anonymous" poster="https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=1200&q=80">
+              Your browser does not support HTML5 video streaming.
+            </video>
+
+            <!-- YouTube Center Big Play/Pause Animation -->
+            <div class="yt-bezel" id="ytBezel">
+              <div class="yt-bezel-icon" id="ytBezelIcon">
+                <svg class="bezel-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                <svg class="bezel-pause hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              </div>
+            </div>
+
+            <!-- YouTube Double Click Seek Ripples -->
+            <div class="yt-seek-ripple left" id="ytSeekLeft">
+              <div class="yt-seek-ripple-content">
+                <svg viewBox="0 0 24 24" class="yt-seek-icon"><path fill="currentColor" d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>
+                <span>10 seconds</span>
+              </div>
+            </div>
+            <div class="yt-seek-ripple right" id="ytSeekRight">
+              <div class="yt-seek-ripple-content">
+                <svg viewBox="0 0 24 24" class="yt-seek-icon"><path fill="currentColor" d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
+                <span>10 seconds</span>
+              </div>
+            </div>
+
+            <!-- YouTube Circular Buffering Spinner -->
+            <div class="yt-spinner hidden" id="ytSpinner">
+              <svg class="yt-spinner-svg" viewBox="0 0 50 50">
+                <circle class="yt-spinner-path" cx="25" cy="25" r="20" fill="none" stroke-width="4"></circle>
+              </svg>
+            </div>
+
+            <!-- YouTube On-Screen Volume HUD -->
+            <div class="yt-volume-hud hidden" id="ytVolumeHud">
+              <div class="yt-hud-bar">
+                <div class="yt-hud-fill" id="ytVolumeHudFill"></div>
+              </div>
+              <span id="ytVolumeHudText">100%</span>
+            </div>
+
+            <!-- YouTube Stats for Nerds Panel -->
+            <div class="yt-nerd-stats hidden" id="ytNerdStats">
+              <div class="yt-nerd-header">
+                <span>Stats for nerds</span>
+                <button class="yt-nerd-close" id="btnNerdClose">&times;</button>
+              </div>
+              <div class="yt-nerd-content">
+                <div class="yt-nerd-row"><span>Video ID / InfoHash:</span><strong id="nerdInfoHash">--</strong></div>
+                <div class="yt-nerd-row"><span>Dimensions / Res:</span><strong id="nerdResolution">0x0</strong></div>
+                <div class="yt-nerd-row"><span>Volume / Normalized:</span><strong id="nerdVolume">100%</strong></div>
+                <div class="yt-nerd-row"><span>Buffer Health:</span><strong id="nerdBuffer">0.00 s</strong></div>
+                <div class="yt-nerd-row"><span>Network Activity:</span><strong id="nerdNetwork">0 KB/s</strong></div>
+                <div class="yt-nerd-row"><span>Dropped Frames:</span><strong id="nerdFrames">0 / 0</strong></div>
+                <div class="yt-nerd-row"><span>Active Swarm Peers:</span><strong id="nerdPeers">0</strong></div>
+              </div>
+            </div>
+
+            <!-- YouTube Settings Menu Popover -->
+            <div class="yt-settings-menu hidden" id="ytSettingsMenu">
+              <!-- Main Panel -->
+              <div class="yt-settings-panel" id="ytSettingsMain">
+                <div class="yt-menu-item" id="btnMenuSpeed">
+                  <div class="yt-menu-left">
+                    <svg viewBox="0 0 24 24" class="yt-menu-icon"><path fill="currentColor" d="M10 8v8l6-4-6-4zm11 4c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.12 0 4.07.74 5.61 1.97l-1.46 1.46C14.99 5.56 13.56 5 12 5c-3.87 0-7 3.13-7 7s3.13 7 7 7 7-3.13 7-7h2z"/></svg>
+                    <span>Playback speed</span>
+                  </div>
+                  <div class="yt-menu-right">
+                    <span id="currentSpeedLabel">Normal</span>
+                    <svg viewBox="0 0 24 24" class="yt-chevron"><path fill="currentColor" d="M9.29 15.88L13.17 12 9.29 8.12a.996.996 0 1 1 1.41-1.41l4.59 4.59c.39.39.39 1.02 0 1.41L10.7 17.3a.996.996 0 0 1-1.41-1.42z"/></svg>
+                  </div>
+                </div>
+                <div class="yt-menu-item" id="btnMenuLoop">
+                  <div class="yt-menu-left">
+                    <svg viewBox="0 0 24 24" class="yt-menu-icon"><path fill="currentColor" d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+                    <span>Loop video</span>
+                  </div>
+                  <div class="yt-menu-right">
+                    <span id="loopLabel">Off</span>
+                  </div>
+                </div>
+                <div class="yt-menu-item" id="btnMenuNerds">
+                  <div class="yt-menu-left">
+                    <svg viewBox="0 0 24 24" class="yt-menu-icon"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                    <span>Stats for nerds</span>
+                  </div>
+                  <div class="yt-menu-right">
+                    <span id="nerdLabel">Off</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Speed Submenu -->
+              <div class="yt-settings-panel hidden" id="ytSettingsSpeed">
+                <div class="yt-menu-header" id="btnSpeedBack">
+                  <svg viewBox="0 0 24 24" class="yt-chevron back"><path fill="currentColor" d="M14.71 15.88L10.83 12l3.88-3.88a.996.996 0 1 0-1.41-1.41L8.71 11.3a.996.996 0 0 0 0 1.41l4.59 4.59c.39.39 1.02.39 1.41 0 .38-.39.39-1.03 0-1.42z"/></svg>
+                  <span>Playback speed</span>
+                </div>
+                <div class="yt-speed-options">
+                  <div class="yt-speed-item" data-speed="0.25"><span>0.25</span></div>
+                  <div class="yt-speed-item" data-speed="0.5"><span>0.5</span></div>
+                  <div class="yt-speed-item" data-speed="0.75"><span>0.75</span></div>
+                  <div class="yt-speed-item active" data-speed="1"><span>Normal</span></div>
+                  <div class="yt-speed-item" data-speed="1.25"><span>1.25</span></div>
+                  <div class="yt-speed-item" data-speed="1.5"><span>1.5</span></div>
+                  <div class="yt-speed-item" data-speed="1.75"><span>1.75</span></div>
+                  <div class="yt-speed-item" data-speed="2"><span>2</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- YouTube Custom Context Menu -->
+            <div class="yt-context-menu hidden" id="ytContextMenu">
+              <div class="yt-context-item" id="ctxLoop">Loop</div>
+              <div class="yt-context-item" id="ctxCopyUrl">Copy video URL</div>
+              <div class="yt-context-item" id="ctxCopyDebug">Copy debug info</div>
+              <div class="yt-context-divider"></div>
+              <div class="yt-context-item" id="ctxNerds">Stats for nerds</div>
+            </div>
+
+            <!-- YouTube Gradient Overlays -->
+            <div class="yt-gradient-top"></div>
+            <div class="yt-gradient-bottom"></div>
+
+            <!-- YouTube Controls Bar -->
+            <div class="yt-controls" id="ytControls">
+              <!-- YouTube Scrubber Bar -->
+              <div class="yt-progress-bar-container" id="ytProgressBarContainer">
+                <div class="yt-time-tooltip" id="ytTimeTooltip">0:00</div>
+                <div class="yt-progress-bar" id="ytProgressBar">
+                  <div class="yt-progress-list">
+                    <div class="yt-progress-load" id="ytProgressLoad"></div>
+                    <div class="yt-progress-hover" id="ytProgressHover"></div>
+                    <div class="yt-progress-play" id="ytProgressPlay"></div>
+                  </div>
+                  <div class="yt-scrubber-thumb" id="ytScrubberThumb"></div>
+                </div>
+              </div>
+
+              <!-- Controls Row -->
+              <div class="yt-controls-bottom">
+                <!-- Left Controls -->
+                <div class="yt-controls-left">
+                  <!-- Play / Pause Button -->
+                  <button class="yt-btn" id="btnPlayPause" title="Play (k)" aria-label="Play">
+                    <svg class="yt-icon-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                    <svg class="yt-icon-pause hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                  </button>
+
+                  <!-- Next File Button -->
+                  <button class="yt-btn" id="btnNextFile" title="Next file (Shift+N)" aria-label="Next file">
+                    <svg viewBox="0 0 24 24"><path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                  </button>
+
+                  <!-- Volume Controls -->
+                  <div class="yt-volume-control" id="ytVolumeControl">
+                    <button class="yt-btn" id="btnMute" title="Mute (m)" aria-label="Mute">
+                      <svg class="yt-vol-high" viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                      <svg class="yt-vol-low hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                      <svg class="yt-vol-muted hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                    </button>
+                    <div class="yt-volume-slider-wrapper">
+                      <input type="range" class="yt-volume-slider" id="ytVolumeSlider" min="0" max="1" step="0.05" value="1">
+                    </div>
+                  </div>
+
+                  <!-- Time Display -->
+                  <div class="yt-time-display">
+                    <span id="currentTime">0:00</span>
+                    <span class="yt-time-separator">/</span>
+                    <span id="durationTime">0:00</span>
+                  </div>
+                </div>
+
+                <!-- Right Controls -->
+                <div class="yt-controls-right">
+                  <!-- Autoplay Switch -->
+                  <button class="yt-btn yt-autoplay-btn" id="btnAutoplay" title="Autoplay is on">
+                    <div class="yt-switch-track active" id="autoplaySwitchTrack">
+                      <div class="yt-switch-knob">
+                        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                      </div>
+                    </div>
+                  </button>
+
+                  <!-- Subtitles (CC) Button -->
+                  <button class="yt-btn" id="btnSubtitles" title="Subtitles/closed captions (c)">
+                    <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/></svg>
+                  </button>
+
+                  <!-- Settings Gear Button -->
+                  <button class="yt-btn" id="btnSettings" title="Settings">
+                    <svg class="yt-icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                  </button>
+
+                  <!-- Miniplayer (Picture-in-Picture) Button -->
+                  <button class="yt-btn" id="btnMiniplayer" title="Miniplayer (i)">
+                    <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg>
+                  </button>
+
+                  <!-- Theater Mode Button -->
+                  <button class="yt-btn" id="btnTheater" title="Theater mode (t)">
+                    <svg class="yt-icon-theater" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6H5c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H5V8h14v8z"/></svg>
+                  </button>
+
+                  <!-- Fullscreen Button -->
+                  <button class="yt-btn" id="btnFullscreen" title="Fullscreen (f)">
+                    <svg class="yt-icon-fs-enter" viewBox="0 0 24 24"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                    <svg class="yt-icon-fs-exit hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- YouTube Video Header & Channel Row -->
+          <div class="yt-video-info-section">
+            <h1 id="torrentNameDisplay" class="yt-video-title">Torrent Video Title</h1>
+
+            <div class="yt-channel-row">
+              <!-- Channel Info -->
+              <div class="yt-channel-left">
+                <div class="yt-channel-avatar">
+                  <span>SF</span>
+                </div>
+                <div class="yt-channel-text">
+                  <div class="yt-channel-name">
+                    <span>Torrent Swarm</span>
+                    <svg class="yt-verified-badge" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                  </div>
+                  <div class="yt-channel-subs">
+                    <span id="peerCountText">0 active peers</span>
+                  </div>
+                </div>
+                <div class="file-selector-box yt-file-picker">
+                  <label for="fileSelect"><i data-lucide="folder-video"></i> File:</label>
+                  <select id="fileSelect"></select>
+                </div>
+              </div>
+
+              <!-- YouTube Action Buttons -->
+              <div class="yt-action-buttons">
+                <!-- Like / Dislike Pill -->
+                <div class="yt-pill-group">
+                  <button class="yt-pill-btn yt-like-btn" id="btnLike">
+                    <svg viewBox="0 0 24 24"><path fill="currentColor" d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+                    <span id="likeCount">1.4K</span>
+                  </button>
+                  <div class="yt-pill-sep"></div>
+                  <button class="yt-pill-btn yt-dislike-btn" id="btnDislike">
+                    <svg viewBox="0 0 24 24"><path fill="currentColor" d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.37-.36.59-.86.59-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
+                  </button>
+                </div>
+
+                <!-- Share Button -->
+                <button class="yt-pill-btn" id="btnShare">
+                  <svg viewBox="0 0 24 24"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+                  <span>Share</span>
+                </button>
+
+                <!-- Close / Stop Button -->
+                <button id="btnCloseVideo" class="yt-pill-btn yt-close-btn" title="Close video player and stop torrent downloading">
+                  <i data-lucide="x-circle"></i>
+                  <span>Stop & Close</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- YouTube Expandable Description Card -->
+            <div class="yt-description-card" id="ytDescription">
+              <div class="yt-desc-header">
+                <span id="torrentSizeDisplay" class="yt-desc-badge">0 GB</span>
+                <span class="yt-desc-bullet">&bull;</span>
+                <span id="ytStreamStatus">Live HTTP 206 Streaming</span>
+                <span class="yt-desc-bullet">&bull;</span>
+                <span id="dlSpeedText">0 KB/s DL</span>
+                <span class="yt-desc-bullet">&bull;</span>
+                <span id="ulSpeedText">0 KB/s UL</span>
+              </div>
+              <p class="yt-desc-text">
+                Streaming sequentially via BitTorrent swarm pieces. Pieces are downloaded in order to allow instant video playback before the complete file download finishes.
+              </p>
+              <!-- Overall Download Progress Bar -->
+              <div class="yt-desc-progress">
+                <div class="yt-desc-progress-header">
+                  <span>Torrent Download Completion: <strong id="progressPercent">0%</strong> (<span id="downloadedAmount">0 MB</span>)</span>
+                </div>
+                <div class="progress-bar-bg">
+                  <div id="progressBarFill" class="progress-bar-fill" style="width: 0%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar: YouTube Up Next / Playlist Queue -->
+        <aside class="player-sidebar">
+          <div class="yt-sidebar-card">
+            <div class="yt-sidebar-header">
+              <h3><svg viewBox="0 0 24 24" class="yt-queue-icon"><path fill="currentColor" d="M19 15v-3h-2v3h-3v2h3v3h2v-3h3v-2h-3zM4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg> Torrent Playlist</h3>
+              <span id="fileCountBadge" class="yt-queue-badge">0 files</span>
+            </div>
+            <ul id="fileList" class="yt-queue-list">
+              <!-- Dynamically populated files -->
+            </ul>
+          </div>
+        </aside>
+      </div>
+      </div> <!-- /#playerView -->
+
+      <!-- Dedicated Torrent Search Engine View Pane -->
+      <div id="searchView" class="view-pane hidden">
+        <section class="card search-hero-card">
+          <div class="search-header-flex">
+            <div class="search-title-wrap">
+              <div class="search-title-row">
+                <h2><i data-lucide="compass"></i> Torrent Search Engine</h2>
+                <span class="badge-live-pulse"><span class="pulse-dot"></span> 5 Scrapers Active</span>
+              </div>
+              <p class="subtitle">Search movies, TV shows, anime, music, and media across 1337x, ThePirateBay, YTS, EZTV & Limetorrents with instant 1-click in-browser streaming.</p>
+            </div>
+            <div class="providers-tag-row">
+              <span class="provider-pill p-1337x">1337x</span>
+              <span class="provider-pill p-tpb">ThePirateBay</span>
+              <span class="provider-pill p-yts">YTS</span>
+              <span class="provider-pill p-eztv">EZTV</span>
+              <span class="provider-pill p-lime">Limetorrents</span>
+            </div>
+          </div>
+
+          <!-- Main Search Form -->
+          <form id="searchForm" class="search-form">
+            <div class="search-input-wrap">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="searchInput" placeholder="Search for movies, TV series, anime, documentaries, software, music..." autocomplete="off" required>
+              <button type="button" id="btnSearchClear" class="btn-clear hidden" title="Clear query">
+                <i data-lucide="x"></i>
+              </button>
+              <button type="submit" id="btnSearchSubmit" class="btn-primary search-submit-btn">
+                <i data-lucide="search"></i> <span>Search</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- Filters Bar -->
+          <div class="search-filters-bar">
+            <!-- Category Pills -->
+            <div class="category-pills" id="categoryPills">
+              <button type="button" class="cat-pill active" data-category="All"><i data-lucide="layers"></i> All</button>
+              <button type="button" class="cat-pill" data-category="Movies"><i data-lucide="film"></i> Movies</button>
+              <button type="button" class="cat-pill" data-category="TV"><i data-lucide="tv"></i> TV Series</button>
+              <button type="button" class="cat-pill" data-category="Anime"><i data-lucide="sparkles"></i> Anime</button>
+              <button type="button" class="cat-pill" data-category="Music"><i data-lucide="music"></i> Music</button>
+              <button type="button" class="cat-pill" data-category="Applications"><i data-lucide="box"></i> Software</button>
+            </div>
+
+            <!-- Sort & Limit Controls -->
+            <div class="search-sort-controls">
+              <div class="control-group">
+                <label for="searchSortSelect"><i data-lucide="arrow-down-up"></i> Sort:</label>
+                <select id="searchSortSelect" class="custom-select">
+                  <option value="seeds-desc">Most Seeders</option>
+                  <option value="peers-desc">Most Leechers</option>
+                  <option value="size-desc">Largest Size</option>
+                  <option value="size-asc">Smallest Size</option>
+                  <option value="title-asc">Title (A-Z)</option>
+                </select>
+              </div>
+
+              <div class="control-group">
+                <label for="searchLimitSelect"><i data-lucide="list"></i> Limit:</label>
+                <select id="searchLimitSelect" class="custom-select">
+                  <option value="20" selected>20</option>
+                  <option value="30">30</option>
+                  <option value="50">50</option>
+                  <option value="10">10</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Trending Suggestions -->
+          <div class="trending-tags">
+            <span class="trending-label"><i data-lucide="flame"></i> Quick:</span>
+            <button type="button" class="tag-btn" data-query="Big Buck Bunny">Big Buck Bunny</button>
+            <button type="button" class="tag-btn" data-query="Sintel">Sintel</button>
+            <button type="button" class="tag-btn" data-query="Tears of Steel">Tears of Steel</button>
+            <button type="button" class="tag-btn" data-query="Ubuntu 24.04">Ubuntu 24.04</button>
+            <button type="button" class="tag-btn" data-query="Cosmos Laundromat">Cosmos Laundromat</button>
+            <button type="button" class="tag-btn" data-query="Matrix">The Matrix</button>
+          </div>
+        </section>
+
+        <!-- Search Status / Stats Header -->
+        <div id="searchStatsBar" class="search-stats-bar hidden">
+          <div class="stats-left">
+            <span id="searchResultCount" class="result-count">0 torrents found</span>
+            <span id="searchQueryBadge" class="query-badge"></span>
+          </div>
+          <div class="stats-right">
+            <span class="stats-tip"><i data-lucide="zap"></i> Click <strong>Stream Now</strong> to stream in browser instantly</span>
+          </div>
+        </div>
+
+        <!-- Search Loading Skeleton -->
+        <div id="searchLoading" class="search-loading hidden">
+          <div class="search-spinner-row">
+            <div class="spinner"></div>
+            <span>Querying active torrent scrapers in real-time...</span>
+          </div>
+          <div class="skeleton-grid">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+          </div>
+        </div>
+
+        <!-- Search Empty State -->
+        <div id="searchEmptyState" class="search-empty-state">
+          <div class="empty-icon-wrap">
+            <i data-lucide="compass" class="empty-icon"></i>
+          </div>
+          <h3>Discover &amp; Stream Any Torrent</h3>
+          <p>Search millions of movies, shows, and videos across top torrent indices and play them sequentially right in your browser.</p>
+          <div class="empty-action-row">
+            <button type="button" class="btn-sample btn-empty-demo" data-demo="Matrix">
+              <i data-lucide="play"></i> Try searching "The Matrix"
+            </button>
+            <button type="button" class="btn-sample btn-empty-demo" data-demo="Ubuntu">
+              <i data-lucide="play"></i> Try searching "Ubuntu"
+            </button>
+          </div>
+        </div>
+
+        <!-- Search Error State -->
+        <div id="searchErrorState" class="card search-error-card hidden">
+          <i data-lucide="alert-circle" class="error-icon"></i>
+          <h3 id="searchErrorTitle">Search Failed</h3>
+          <p id="searchErrorMessage">Could not fetch results from scrapers. Please check your network or try again.</p>
+          <button type="button" id="btnSearchRetry" class="btn-secondary btn-sm"><i data-lucide="refresh-cw"></i> Retry</button>
+        </div>
+
+        <!-- Search Results Grid -->
+        <div id="searchResultsGrid" class="search-results-grid hidden"></div>
+      </div> <!-- /#searchView -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>StreamForge Sequential Torrent Video Player &bull; Powered by <strong>WebTorrent</strong> in the Browser &bull; WebRTC Peer-to-Peer Streaming &bull; No Backend Required</p>
+    </footer>
+  </div>
+
+  <!-- Shortcuts Modal -->
+  <div id="shortcutsModal" class="modal hidden">
+    <div class="modal-content card">
+      <div class="modal-header">
+        <h3><i data-lucide="keyboard"></i> Keyboard Shortcuts</h3>
+        <button id="btnCloseModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <ul class="shortcuts-list">
+          <li><kbd>Space</kbd> / <kbd>K</kbd> <span>Play / Pause</span></li>
+          <li><kbd>←</kbd> / <kbd>→</kbd> <span>Seek Backward / Forward 5s</span></li>
+          <li><kbd>↑</kbd> / <kbd>↓</kbd> <span>Increase / Decrease Volume</span></li>
+          <li><kbd>F</kbd> <span>Toggle Fullscreen</span></li>
+          <li><kbd>M</kbd> <span>Mute / Unmute Audio</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
