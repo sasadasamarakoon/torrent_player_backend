@@ -1197,9 +1197,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function addBrowserTorrent(input) {
     return new Promise((resolve, reject) => {
       const client = getBrowserTorrentClient();
+      const browserInput = typeof input === 'string' && input.startsWith('magnet:?')
+        ? `${input}${browserTrackers.map(tracker => `&tr=${encodeURIComponent(tracker)}`).join('')}`
+        : input;
       let settled = false;
       let timeout;
-      const torrent = client.add(input, { announce: browserTrackers }, (readyTorrent) => {
+      const torrent = client.add(browserInput, { announce: browserTrackers }, (readyTorrent) => {
         settled = true;
         clearTimeout(timeout);
         resolve(readyTorrent);
