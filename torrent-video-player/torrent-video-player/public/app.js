@@ -1186,6 +1186,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showLoading('Could not start stream', e.message || 'No seeders answered. Pick a release with more seeds.');
       return;
     }
+  }
 
   function getBrowserTorrentClient() {
     if (!window.WebTorrent) throw new Error('WebTorrent browser engine is unavailable. Reload the page and try again.');
@@ -1227,10 +1228,11 @@ document.addEventListener('DOMContentLoaded', () => {
       formattedSize: formatBytes(file.length),
       path: file.path,
       isVideo: /\.(mp4|mkv|avi|mov|webm|flv|wmv|m4v|ts|ogv|mpg|mpeg)$/i.test(file.name),
-      needsAudioFix: filenameNeedsAudioFix(file.name),
+      isBrowserPlayable: /\.(mp4|webm|m4v|ogv)$/i.test(file.name),
+      needsAudioFix: false,
       browserFile: file
     }));
-    const videoFiles = files.filter(file => file.isVideo);
+    const videoFiles = files.filter(file => file.isBrowserPlayable);
     const largest = (videoFiles.length ? videoFiles : files).reduce((best, file) =>
       !best || file.length > best.length ? file : best, null);
     const totalSize = files.reduce((sum, file) => sum + file.length, 0);
@@ -1242,7 +1244,6 @@ document.addEventListener('DOMContentLoaded', () => {
       files,
       browserTorrent: torrent
     };
-  }
   }
 
 
@@ -1257,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Smart file selector based on episode / movie size constraints
     if (torrentData.files && torrentData.files.length > 1) {
-      const isVideo = (f) => f.isVideo !== false && /\.(mp4|mkv|avi|mov|webm|flv|wmv|m4v|ts)$/i.test(f.name);
+      const isVideo = (f) => f.isBrowserPlayable === true;
       const isSample = (f) => /sample/i.test(f.name);
 
       // 1. If looking for a specific episode (e.g. S01E01), match the episode code in the filename & prefer < 1 GB
@@ -1360,15 +1361,12 @@ document.addEventListener('DOMContentLoaded', () => {
       : null;
     activeFile = file || { index: fileIndex, name: '' };
 
-    const autoFix = !!(file && (file.needsAudioFix || filenameNeedsAudioFix(file.name)));
-    if (autoFix) {
-      isAudioFixActive = true;
-      autoAudioFixAttempted = true;
-      applyAudioFixUi(true);
-      showToast('This release uses cinema audio (AC3/DTS). Transcoding to AAC so sound plays in the browser.', 'info');
+    if (file && file.isBrowserPlayable !== true) {
+      showLoading('Unsupported browser video format', `${file.name} cannot be decoded by this browser. Choose an MP4 or WebM file from the torrent.`);
+      return;
     }
 
-    streamFromBrowser(fileIndex, autoFix);
+    streamFromBrowser(fileIndex, false);
   }
 
   function streamFromBrowser(fileIndex, audioFix = false, startTime = 0) {
