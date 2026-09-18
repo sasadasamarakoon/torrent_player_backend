@@ -132,7 +132,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'wss://tracker.openwebtorrent.com',
     'wss://tracker.btorrent.xyz',
     'wss://tracker.webtorrent.dev',
-    'wss://tracker.files.fm:7073/announce'
+    'wss://tracker.files.fm:7073/announce',
+    'wss://tracker.novage.com.ua:443/announce'
   ];
   let activeFile = null;      // currently streaming file object
   let statsInterval = null;
@@ -1149,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     isAudioFixActive = false;
     autoAudioFixAttempted = false;
     applyAudioFixUi(false);
-    showLoading('Connecting to Swarm...', 'Contacting DHT nodes and peer trackers (uTP/UDP)...');
+    showLoading('Connecting to Swarm...', 'Contacting browser-compatible WebSocket trackers...');
     stopStatsPolling();
     if (activeBrowserTorrent) {
       try { activeBrowserTorrent.destroy(); } catch (e) {}
@@ -1170,7 +1171,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      loadingMessage.textContent = 'Contacting seeders across public trackers and DHT...';
+      loadingMessage.textContent = 'Contacting seeders across browser-compatible WebSocket trackers...';
       const torrent = await addBrowserTorrent(input);
       activeBrowserTorrent = torrent;
       const torrentData = buildTorrentData(torrent);
@@ -1195,9 +1196,24 @@ document.addEventListener('DOMContentLoaded', () => {
   function addBrowserTorrent(input) {
     return new Promise((resolve, reject) => {
       const client = getBrowserTorrentClient();
-      const torrent = client.add(input, { announce: browserTrackers }, (readyTorrent) => resolve(readyTorrent));
-      torrent.once('error', reject);
-      const timeout = setTimeout(() => reject(new Error('No seeders answered in time. Pick a release with more seeds.')), 125000);
+      let settled = false;
+      let timeout;
+      const torrent = client.add(input, { announce: browserTrackers }, (readyTorrent) => {
+        settled = true;
+        clearTimeout(timeout);
+        resolve(readyTorrent);
+      });
+      const fail = (error) => {
+        if (settled) return;
+        settled = true;
+        reject(error);
+      };
+      torrent.on('warning', (warning) => console.warn('[Browser WebTorrent Tracker]:', warning.message || warning));
+      torrent.once('error', fail);
+      timeout = setTimeout(() => {
+        try { torrent.destroy(); } catch (e) {}
+        fail(new Error('No browser-compatible seeders answered. This browser can use WebSocket trackers, but not UDP/DHT. Try a release with active WebTorrent seeders.'));
+      }, 125000);
       torrent.once('ready', () => clearTimeout(timeout));
     });
   }
