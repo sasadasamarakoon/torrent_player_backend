@@ -128,6 +128,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentTorrent = null;  // metadata object { name, infoHash, files, ... }
   let browserTorrentClient = null;
   let activeBrowserTorrent = null;
+  const browserTrackers = [
+    'wss://tracker.openwebtorrent.com',
+    'wss://tracker.btorrent.xyz',
+    'wss://tracker.webtorrent.dev',
+    'wss://tracker.files.fm:7073/announce'
+  ];
   let activeFile = null;      // currently streaming file object
   let statsInterval = null;
   let nerdInterval = null;
@@ -1179,13 +1185,6 @@ document.addEventListener('DOMContentLoaded', () => {
       showLoading('Could not start stream', e.message || 'No seeders answered. Pick a release with more seeds.');
       return;
     }
-
-  const browserTrackers = [
-    'wss://tracker.openwebtorrent.com',
-    'wss://tracker.btorrent.xyz',
-    'wss://tracker.webtorrent.dev',
-    'wss://tracker.files.fm:7073/announce'
-  ];
 
   function getBrowserTorrentClient() {
     if (!window.WebTorrent) throw new Error('WebTorrent browser engine is unavailable. Reload the page and try again.');
