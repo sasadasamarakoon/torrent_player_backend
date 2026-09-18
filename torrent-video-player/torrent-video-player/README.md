@@ -1,6 +1,6 @@
 # StreamForge — Sequential Torrent Video Streaming Player
 
-A full-stack Node.js & HTML5 web application that streams video content directly from BitTorrent swarms sequentially in real-time, just like live streaming.
+A full-stack Node.js & HTML5 web application whose browser client downloads and streams video content directly from BitTorrent swarms sequentially in real-time, just like live streaming.
 
 ---
 
@@ -8,8 +8,8 @@ A full-stack Node.js & HTML5 web application that streams video content directly
 
 Standard BitTorrent downloads pieces of a file out of order (rarest piece first). For live video playback, this application:
 1. Prioritizes the **file header** (`moov` atom in MP4 / MKV header) and initial video chunks.
-2. Serves video content over an Express HTTP server with support for `HTTP 206 Partial Content` (Range Requests).
-3. Communicates dynamically with `WebTorrent` engine so that whenever the HTML5 `<video>` player requests a byte range (`Range: bytes=X-Y`), the backend automatically adjusts WebTorrent's piece priority queue on-the-fly to download that exact chunk next.
+2. Adds magnets and local `.torrent` files to the browser's WebTorrent engine.
+3. Assigns the selected torrent file's browser stream URL directly to the HTML5 `<video>` player; the Node server remains responsible for catalog/search APIs only.
 
 ---
 
@@ -45,7 +45,7 @@ Standard BitTorrent downloads pieces of a file out of order (rarest piece first)
 
 ## 💻 Features
 
-- **Sequential Torrent Streaming:** Start watching within seconds of loading a magnet link or `.torrent` file.
+- **Browser Torrent Streaming:** Start watching within seconds of loading a magnet link or `.torrent` file without uploading the torrent to the server.
 - **Modern Responsive Web UI:** Sleek, glassmorphic dark theme built for desktop, tablet, or Smart TV browsers.
 - **Live Torrent Swarm Metrics:** Real-time metrics for download speed, upload speed, connected peers, and piece buffering percentage.
 - **Multi-file Support:** Select any video episode/file inside multi-file torrents (e.g., TV season torrents).
@@ -59,7 +59,7 @@ Standard BitTorrent downloads pieces of a file out of order (rarest piece first)
 
 ```
 torrent-video-player/
-├── server.js            # Express & WebTorrent streaming backend
+├── server.js            # Express catalog/search backend
 ├── package.json         # Dependencies & project scripts
 ├── README.md            # Documentation
 ├── start.sh             # Launch script for Linux / macOS

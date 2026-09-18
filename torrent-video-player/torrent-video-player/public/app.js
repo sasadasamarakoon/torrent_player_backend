@@ -126,6 +126,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // State
   let currentTorrent = null;  // metadata object { name, infoHash, files, ... }
+  let browserTorrentClient = null;
+  let activeBrowserTorrent = null;
   let activeFile = null;      // currently streaming file object
   let statsInterval = null;
   let nerdInterval = null;
@@ -663,10 +665,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (enabled) {
       if (!opts.silent) showToast('Transcoding unsupported audio (AC3/DTS) to AAC so you can hear it', 'success');
-      streamFromServer(currentTorrent.infoHash, fileIndex, true, currentTime);
+      streamFromBrowser(fileIndex, true, currentTime);
     } else {
       if (!opts.silent) showToast('Reverted to Direct Audio stream', 'info');
-      streamFromServer(currentTorrent.infoHash, fileIndex, false, currentTime);
+      streamFromBrowser(fileIndex, false, currentTime);
     }
   }
 
@@ -1106,32 +1108,22 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-  // --- Upload a .torrent file and stream via backend ---
+  // --- Add a .torrent file directly to the browser WebTorrent engine ---
   async function uploadTorrentFile(file) {
-    showLoading('Uploading .torrent file...', 'Connecting to BitTorrent swarm (TCP/UDP/uTP)...');
+    showLoading('Opening .torrent file...', 'Connecting to BitTorrent swarm through the browser...');
     playerSection.classList.add('hidden');
     stopStatsPolling();
 
     try {
-      const formData = new FormData();
-      formData.append('torrent', file);
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || `HTTP ${res.status} upload error`);
-      }
-
-      const torrentData = await res.json();
+      const torrent = await addBrowserTorrent(file);
+      const torrentData = buildTorrentData(torrent);
       currentTorrent = torrentData;
+      activeBrowserTorrent = torrent;
       renderTorrentData(torrentData);
       hideLoading();
       playerSection.classList.remove('hidden');
       startStatsPolling();
+      markNowPlaying(torrentData.name || 'Streaming');
     } catch (err) {
       console.error('[Upload Error]:', err);
       showLoading('Upload Failed', err.message);
@@ -1139,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- Load and Stream Torrent (Prefers Server BitTorrent Engine for low peers) ---
+  // --- Load and stream a torrent entirely in the browser ---
   let activeTargetEpisode = null;
   let activeIsEpisode = false;
   let activeIsMovie = false;
@@ -1153,6 +1145,10 @@ document.addEventListener('DOMContentLoaded', () => {
     applyAudioFixUi(false);
     showLoading('Connecting to Swarm...', 'Contacting DHT nodes and peer trackers (uTP/UDP)...');
     stopStatsPolling();
+    if (activeBrowserTorrent) {
+      try { activeBrowserTorrent.destroy(); } catch (e) {}
+      activeBrowserTorrent = null;
+    }
 
     if (options.episode) activeTargetEpisode = options.episode;
     if (options.type === 'series') { activeIsEpisode = true; activeIsMovie = false; }
@@ -1167,62 +1163,71 @@ document.addEventListener('DOMContentLoaded', () => {
       input = 'magnet:?xt=urn:btih:' + input;
     }
 
-    // Always query backend server engine (has full TCP/UDP/uTP support)
     try {
-      const controller = new AbortController();
-      // Allow up to 125 seconds for low-peer/DHT swarms
-      const timeoutId = setTimeout(() => controller.abort(), 125000);
-
-      loadingMessage.textContent = 'Contacting seeders across 15+ public trackers & DHT...';
-
-      const res = await fetch('/api/torrent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          magnet: input,
-          type: options.type || undefined,
-          episode: options.episode || undefined
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const torrentData = await res.json();
-        currentTorrent = torrentData;
-        try {
-          renderTorrentData(torrentData);
-        } catch (renderErr) {
-          console.error('[Player render error]:', renderErr);
-          showLoading('Player error', renderErr.message || 'Could not start the video player.');
-          return;
-        }
-        hideLoading();
-        playerSection.classList.remove('hidden');
-        startStatsPolling();
-        markNowPlaying(torrentData.name || 'Streaming');
-        return;
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        console.warn('[Server Info Warning]:', errData.error);
-        showLoading('Could not start stream', errData.error || `Server returned HTTP ${res.status}`);
-        setTimeout(() => hideLoading(), 8000);
-        return;
-      }
+      loadingMessage.textContent = 'Contacting seeders across public trackers and DHT...';
+      const torrent = await addBrowserTorrent(input);
+      activeBrowserTorrent = torrent;
+      const torrentData = buildTorrentData(torrent);
+      currentTorrent = torrentData;
+      renderTorrentData(torrentData);
+      hideLoading();
+      playerSection.classList.remove('hidden');
+      startStatsPolling();
+      markNowPlaying(torrentData.name || 'Streaming');
     } catch (e) {
-      console.log('[Server Info Attempt]', e.message);
-      const timedOut = e.name === 'AbortError';
-      showLoading(
-        timedOut ? 'Swarm timeout' : 'Connection Failed',
-        timedOut
-          ? 'No seeders answered in time. Pick a release with more seeds.'
-          : (e.message || 'Could not reach the streaming server.')
-      );
-      setTimeout(() => {
-        /* Keep the error visible on the player overlay */
-      }, 8000);
+      console.error('[Browser WebTorrent Error]:', e);
+      showLoading('Could not start stream', e.message || 'No seeders answered. Pick a release with more seeds.');
       return;
     }
+
+  const browserTrackers = [
+    'wss://tracker.openwebtorrent.com',
+    'wss://tracker.btorrent.xyz',
+    'wss://tracker.webtorrent.dev',
+    'wss://tracker.files.fm:7073/announce'
+  ];
+
+  function getBrowserTorrentClient() {
+    if (!window.WebTorrent) throw new Error('WebTorrent browser engine is unavailable. Reload the page and try again.');
+    if (!browserTorrentClient) browserTorrentClient = new WebTorrent();
+    return browserTorrentClient;
+  }
+
+  function addBrowserTorrent(input) {
+    return new Promise((resolve, reject) => {
+      const client = getBrowserTorrentClient();
+      const torrent = client.add(input, { announce: browserTrackers }, (readyTorrent) => resolve(readyTorrent));
+      torrent.once('error', reject);
+      const timeout = setTimeout(() => reject(new Error('No seeders answered in time. Pick a release with more seeds.')), 125000);
+      torrent.once('ready', () => clearTimeout(timeout));
+    });
+  }
+
+  function buildTorrentData(torrent) {
+    const files = (torrent.files || []).map((file, index) => ({
+      id: index,
+      index,
+      name: file.name,
+      length: file.length,
+      formattedSize: formatBytes(file.length),
+      path: file.path,
+      isVideo: /\.(mp4|mkv|avi|mov|webm|flv|wmv|m4v|ts|ogv|mpg|mpeg)$/i.test(file.name),
+      needsAudioFix: filenameNeedsAudioFix(file.name),
+      browserFile: file
+    }));
+    const videoFiles = files.filter(file => file.isVideo);
+    const largest = (videoFiles.length ? videoFiles : files).reduce((best, file) =>
+      !best || file.length > best.length ? file : best, null);
+    const totalSize = files.reduce((sum, file) => sum + file.length, 0);
+    return {
+      name: torrent.name || 'Unknown Torrent',
+      infoHash: torrent.infoHash,
+      formattedTotalSize: formatBytes(totalSize),
+      defaultFileIndex: largest ? largest.index : 0,
+      files,
+      browserTorrent: torrent
+    };
+  }
   }
 
 
@@ -1348,20 +1353,18 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('This release uses cinema audio (AC3/DTS). Transcoding to AAC so sound plays in the browser.', 'info');
     }
 
-    streamFromServer(infoHash, fileIndex, autoFix);
+    streamFromBrowser(fileIndex, autoFix);
   }
 
-  function streamFromServer(infoHash, fileIndex, audioFix = false, startTime = 0) {
-    let streamUrl = `/api/torrent/stream?torrent=${encodeURIComponent(infoHash)}&fileIndex=${fileIndex}`;
-    if (audioFix) {
-      streamUrl += `&audioFix=1`;
-      if (startTime > 0) {
-        streamUrl += `&ss=${Math.floor(startTime)}`;
-      }
-    }
+  function streamFromBrowser(fileIndex, audioFix = false, startTime = 0) {
+    const fileData = currentTorrent && currentTorrent.files
+      ? currentTorrent.files.find(file => file.index === fileIndex)
+      : null;
+    const file = fileData && fileData.browserFile;
+    if (!file) return;
     ensureAudiblePlayback();
     videoPlayer.removeAttribute('src');
-    videoPlayer.src = streamUrl;
+    videoPlayer.src = typeof file.streamURL === 'function' ? file.streamURL() : '';
     videoPlayer.load();
     videoPlayer.currentTime = startTime > 0 ? startTime : 0;
     if (currentGain > 1.01) initAudioBooster();
@@ -1388,23 +1391,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Torrent Swarm Stats Polling (always polls backend server) ---
+  // --- Torrent Swarm Stats Polling (browser torrent engine) ---
   function startStatsPolling() {
     stopStatsPolling();
     statsInterval = setInterval(async () => {
-      if (currentTorrent && currentTorrent.infoHash) {
+      if (activeBrowserTorrent) {
         try {
-          const res = await fetch(`/api/torrent/stats/${currentTorrent.infoHash}`);
-          if (res.ok) {
-            const data = await res.json();
-            updateStatsUI(
-              data.downloadSpeed || 0,
-              data.uploadSpeed || 0,
-              data.numPeers || 0,
-              data.downloaded || 0,
-              data.progress || 0
-            );
-          }
+          updateStatsUI(activeBrowserTorrent.downloadSpeed || 0, activeBrowserTorrent.uploadSpeed || 0,
+            activeBrowserTorrent.numPeers || 0, activeBrowserTorrent.downloaded || 0,
+            (activeBrowserTorrent.progress || 0) * 100);
         } catch (e) {}
       }
     }, 1000);
@@ -1457,12 +1452,9 @@ document.addEventListener('DOMContentLoaded', () => {
       nerdInterval = null;
     }
 
-    if (currentTorrent && currentTorrent.infoHash) {
-      try {
-        const stopUrl = `/api/torrent/stop?torrent=${encodeURIComponent(currentTorrent.infoHash)}`;
-        navigator.sendBeacon(stopUrl);
-        fetch(stopUrl, { method: 'POST', keepalive: true }).catch(() => {});
-      } catch (e) {}
+    if (activeBrowserTorrent) {
+      try { activeBrowserTorrent.destroy(); } catch (e) {}
+      activeBrowserTorrent = null;
     }
 
     currentTorrent = null;
@@ -1476,11 +1468,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCloseVideo) btnCloseVideo.addEventListener('click', closeVideo);
 
   window.addEventListener('beforeunload', () => {
-    // Clean up backend torrent on page unload
-    if (currentTorrent && currentTorrent.infoHash) {
-      try {
-        navigator.sendBeacon(`/api/torrent/stop?torrent=${encodeURIComponent(currentTorrent.infoHash)}`);
-      } catch (e) {}
+    if (activeBrowserTorrent) {
+      try { activeBrowserTorrent.destroy(); } catch (e) {}
     }
   });
 
