@@ -1379,21 +1379,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!file) return;
     ensureAudiblePlayback();
     videoPlayer.removeAttribute('src');
-    videoPlayer.src = typeof file.streamURL === 'function' ? file.streamURL() : '';
     videoPlayer.load();
-    videoPlayer.currentTime = startTime > 0 ? startTime : 0;
+    if (typeof file.renderTo !== 'function') {
+      showLoading('Player error', 'This WebTorrent browser build cannot render torrent files. Reload the page and try again.');
+      return;
+    }
+
+    file.renderTo(videoPlayer, {}, (error) => {
+      if (error) {
+        console.error('[Browser WebTorrent Render Error]:', error);
+        showLoading('Could not play file', error.message || 'The selected torrent file could not be rendered.');
+        return;
+      }
+      videoPlayer.currentTime = startTime > 0 ? startTime : 0;
+      const playPromise = videoPlayer.play();
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise.then(() => {
+          ensureAudiblePlayback();
+        }).catch(() => {
+          console.log('[Autoplay]: User interaction needed to start audio playback');
+          if (ytUnmuteBanner) ytUnmuteBanner.classList.remove('hidden');
+        });
+      }
+    });
     if (currentGain > 1.01) initAudioBooster();
     startSilentAudioWatch();
-
-    const playPromise = videoPlayer.play();
-    if (playPromise && typeof playPromise.then === 'function') {
-      playPromise.then(() => {
-        ensureAudiblePlayback();
-      }).catch(() => {
-        console.log('[Autoplay]: User interaction needed to start audio playback');
-        if (ytUnmuteBanner) ytUnmuteBanner.classList.remove('hidden');
-      });
-    }
   }
 
   function updateActiveFileUI(selectedIndex) {
