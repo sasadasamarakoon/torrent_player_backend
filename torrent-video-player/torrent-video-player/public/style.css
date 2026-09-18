@@ -75,6 +75,10 @@ body {
   border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
+.site-version {
+  margin-left: 4px;
+}
+
 /* Cards */
 .card {
   background: var(--bg-card);
